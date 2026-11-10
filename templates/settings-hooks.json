@@ -1,0 +1,22 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "bash \"@CFG@/tools/limit-guard.sh\" 2>/dev/null || true", "timeout": 2 } ] }
+    ],
+    "PostToolUse": [
+      { "hooks": [ { "type": "command", "command": "bash \"@CFG@/tools/limit-guard.sh\" 2>/dev/null || true", "timeout": 2 } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "python3 \"@CFG@/tools/session-snapshot.py\" >/dev/null 2>&1 || true", "async": true } ] }
+    ],
+    "SessionEnd": [
+      { "hooks": [ { "type": "command", "command": "python3 \"@CFG@/tools/session-snapshot.py\" >/dev/null 2>&1 || true", "timeout": 3 } ] }
+    ],
+    "StopFailure": [
+      { "hooks": [ { "type": "command", "command": "python3 \"@CFG@/tools/session-snapshot.py\" >/dev/null 2>&1 || true", "timeout": 3 } ] }
+    ],
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "python3 \"@CFG@/tools/handoff-inject.py\" 2>/dev/null || true", "timeout": 3 } ] }
+    ]
+  }
+}

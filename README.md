@@ -10,6 +10,7 @@ No LLM calls, no network, no daemon of its own. Stdlib Python and bash, merged i
 2. **Snapshot on a real limit hit.** A `StopFailure` hook saves a short markdown snapshot of the session tail (last messages, files edited, last git status) with secrets redacted. `Stop` and `SessionEnd` hooks keep a fresh snapshot too.
 3. **Idle auto-save (macOS launchd).** Every 20 minutes a job looks for sessions idle between 2 h and 48 h and writes a mechanical (no LLM) summary to `~/.claude/state/handoffs/<project-slug>.md`. It never writes into your project directories and never runs `git`.
 4. **Next-session pointer.** A `SessionStart` hook tells the new session that such a file exists, if it is newer than the project's `docs/handoff.md`.
+5. **`/recall` skill.** A small Claude Code skill. In any project, `/recall` (or `/recall <project-name>`) reads the saved snapshots and the idle handoff, and tells you what you were doing, what is unfinished, which files are uncommitted and what to do next. Cheaper than resuming a huge session.
 
 ## Install
 
@@ -26,6 +27,7 @@ What `install.sh` does:
 - backs up `settings.json` to `~/.claude/state/backups/<date>/` before changing it;
 - merges six hook entries with `jq` (never replaces your arrays; running it twice adds nothing; a hook is skipped if that event already runs the same script);
 - copies the scripts to `~/.claude/tools/` (a same-named file is backed up first);
+- copies the `/recall` skill to `~/.claude/skills/recall/SKILL.md` (a skill of your own with that name is backed up first and restored on uninstall);
 - sets `statusLine` **only if you have none**. If you already have one it is never touched silently: you get exact instructions, or pass `--wrap-statusline` to wrap your command (reversible);
 - on macOS, renders a launchd plist with your `$HOME` and loads it with `launchctl bootstrap gui/$(id -u)`. Skip with `--no-launchd`;
 - prints what changed and the uninstall command.

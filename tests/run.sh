@@ -325,6 +325,30 @@ check "non-cli session: no snapshot" test ! -e "$CF/state/snapshots/$SLUG/$SID_S
 eq "snapshot script exits 0 on garbage" "$(echo garbage | HOME="$H" python3 "$SS"; echo "rc=$?")" "rc=0"
 
 # ------------------------------------------------------------------------------------------------
+section "recall skill"
+newhome r
+install_ >/dev/null 2>&1
+check "skills/recall/SKILL.md installed" cmp -s "$REPO/src/skills/recall/SKILL.md" "$CF/skills/recall/SKILL.md"
+check "skill has the frontmatter name: recall" grep -q '^name: recall$' "$CF/skills/recall/SKILL.md"
+check "manifest records the skill" jq -e '.files["skills/recall/SKILL.md"]' "$CF/state/momo-auto-handoff-install.json"
+tr1=$(tree_sum "$H"); install_ >/dev/null 2>&1
+eq "second install: tree identical (skill idempotent)" "$(tree_sum "$H")" "$tr1"
+uninstall_ >/dev/null 2>&1
+check "uninstall removes the skill" test ! -e "$CF/skills/recall/SKILL.md"
+check "uninstall removes the empty skills dir" test ! -e "$CF/skills"
+newhome s
+mkdir -p "$CF/skills/recall"; echo "my own recall skill" > "$CF/skills/recall/SKILL.md"
+install_ >/dev/null 2>&1
+check "ours installed over the user's recall skill" cmp -s "$REPO/src/skills/recall/SKILL.md" "$CF/skills/recall/SKILL.md"
+check "the user's recall skill kept in backups" grep -rq "my own recall skill" "$CF/state/backups"
+uninstall_ >/dev/null 2>&1
+eq "uninstall restores the user's recall skill" "$(cat "$CF/skills/recall/SKILL.md")" "my own recall skill"
+newhome t
+mkdir -p "$CF/skills/recall"; install_ >/dev/null 2>&1; echo "edited by the user" > "$CF/skills/recall/SKILL.md"
+out=$(uninstall_ 2>&1)
+eq "a user-edited skill is left in place" "$(cat "$CF/skills/recall/SKILL.md")" "edited by the user"
+check "no owner-specific words in the shipped skill" bash -c '! grep -qiE "owner|thai|nabhak|yhaii" "$1"' _ "$REPO/src/skills/recall/SKILL.md"
+
 section "real ~/.claude untouched"
 eq "no state dir created in real HOME by tests" "$([ -e "$REAL_HOME/.claude/state/momo-auto-handoff-install.json" ] && echo changed || echo clean)" clean
 

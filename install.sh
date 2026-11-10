@@ -53,6 +53,8 @@ PREFIX=""; [ "$DRY" = 1 ] && PREFIX="[dry-run] would: "
 
 [ -f "$HERE/templates/settings-hooks.json" ] || die "run this from the repository (templates/ not found next to install.sh)"
 for f in $SCRIPTS; do [ -f "$HERE/src/$f" ] || die "missing src/$f"; done
+SKILL_REL="skills/recall/SKILL.md"; SKILL_SRC="$HERE/src/$SKILL_REL"; SKILL_DEST="$CFG/$SKILL_REL"
+[ -f "$SKILL_SRC" ] || die "missing src/$SKILL_REL"
 
 backup_file() { # src -> prints backup path
   local src=$1 base n=0 dest
@@ -126,6 +128,15 @@ fi
 SETTINGS_CHANGED=0
 if [ "$(jq -cS . <<<"$CUR")" != "$(jq -cS . <<<"$NEW")" ]; then SETTINGS_CHANGED=1; fi
 
+# ---- 2a. the /recall skill ---------------------------------------------------------------------
+if [ ! -e "$SKILL_DEST" ]; then SKILL_STATE=new
+elif cmp -s "$SKILL_SRC" "$SKILL_DEST"; then SKILL_STATE=same
+else SKILL_STATE=replace; fi
+case "$SKILL_STATE" in
+  new) note "skill installed: $SKILL_REL (/recall)" ;;
+  replace) note "skill updated: $SKILL_REL (previous copy backed up)" ;;
+esac
+
 # ---- 2. scripts --------------------------------------------------------------------------------
 FILE_PLAN=""   # lines: name|state   state = new | same | replace
 for f in $SCRIPTS; do
@@ -198,6 +209,13 @@ while IFS='|' read -r f st; do
   chmod 755 "$d"
   FILES_JSON=$(jq -c --arg f "tools/$f" --arg b "$bk" '.[$f] = {backup: (if $b == "" then null else $b end)}' <<<"$FILES_JSON")
 done <<<"$FILE_PLAN"
+
+if [ "$SKILL_STATE" != same ]; then
+  mkdir -p "$(dirname "$SKILL_DEST")"
+  skbk=""; [ "$SKILL_STATE" = replace ] && skbk=$(backup_file "$SKILL_DEST")
+  cp "$SKILL_SRC" "$SKILL_DEST"
+  FILES_JSON=$(jq -c --arg f "$SKILL_REL" --arg b "$skbk" '.[$f] = {backup: (if $b == "" then null else $b end)}' <<<"$FILES_JSON")
+fi
 
 if [ "$LAUNCHD" = "yes" ]; then
   mkdir -p "$(dirname "$PLIST")" "$CFG/state"

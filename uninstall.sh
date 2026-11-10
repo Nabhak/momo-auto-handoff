@@ -113,6 +113,19 @@ for f in $SCRIPTS; do
   fi
 done
 
+# ---- the /recall skill -------------------------------------------------------------------------
+SKILL_REL="skills/recall/SKILL.md"; SKILL_DEST="$CFG/$SKILL_REL"; SKILL_BK=""; SKILL_ACT=0
+if [ -e "$SKILL_DEST" ]; then
+  if cmp -s "$HERE/src/$SKILL_REL" "$SKILL_DEST" || grep -q "installed by momo-auto-handoff" "$SKILL_DEST" 2>/dev/null; then
+    SKILL_BK=$(jq -r --arg k "$SKILL_REL" '.files[$k].backup // ""' <<<"$MAN")
+    if [ -n "$SKILL_BK" ] && [ ! -f "$SKILL_BK" ]; then say "warning: recorded backup for $SKILL_REL is missing: $SKILL_BK"; SKILL_BK=""; fi
+    SKILL_ACT=1
+    if [ -n "$SKILL_BK" ]; then act "skill restored from backup: $SKILL_REL"; else act "skill removed: $SKILL_REL"; fi
+  else
+    say "warning: $SKILL_REL is not a momo-auto-handoff file (modified or replaced); left in place"
+  fi
+fi
+
 # ---- launchd -----------------------------------------------------------------------------------
 HAVE_PLIST=0; [ -e "$PLIST" ] && HAVE_PLIST=1
 LOADED=0
@@ -152,6 +165,10 @@ while IFS='|' read -r f bk; do
   [ -z "$f" ] && continue
   if [ -n "$bk" ]; then cp -p "$bk" "$TOOLS/$f"; else rm -f "$TOOLS/$f"; fi
 done <<<"$FILE_ACTIONS"
+
+if [ "$SKILL_ACT" = 1 ]; then
+  if [ -n "$SKILL_BK" ]; then cp -p "$SKILL_BK" "$SKILL_DEST"; else rm -f "$SKILL_DEST"; rmdir "$(dirname "$SKILL_DEST")" 2>/dev/null || true; rmdir "$CFG/skills" 2>/dev/null || true; fi
+fi
 
 if [ "$LOADED" = 1 ]; then launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true; fi
 [ "$HAVE_PLIST" = 1 ] && rm -f "$PLIST"
